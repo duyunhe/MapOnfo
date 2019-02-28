@@ -236,3 +236,52 @@ double ProjectDist(LinePtr src, LinePtr target, Point *pt_list)
 	*/
 	
 }
+
+vector<ModPoint> GetCenterPoints(const vector<Point> &pts0, const vector<Point> &pts1)
+{
+	vector<ModPoint> ret;
+	int i = 0, j = 0;			// two pointer
+	while (i < pts0.size() - 1 && j < pts1.size() - 1)
+	{
+		// add Point
+		ModPoint pt;
+		pt.x = (pts0[i].x + pts1[j].x) / 2, pt.y = (pts0[i].y + pts1[j].y) / 2;
+		ret.push_back(pt);
+		// move on
+		int ni = i + 1, nj = j + 1;
+		double disti, distj;
+		disti = GetDist(pts0[ni], pts1[j]);
+		distj = GetDist(pts0[i], pts1[nj]);
+		if (disti <= distj)
+		{
+			i = ni;
+		}
+		else
+		{
+			j = nj;
+		}
+	}
+	if (i == pts0.size() - 1)		// iµ½ÖÕµã
+	{
+		while (j < pts1.size())
+		{
+			ModPoint pt;
+			pt.x = (pts0[i].x + pts1[j].x) / 2, pt.y = (pts0[i].y + pts1[j].y) / 2;
+			ret.push_back(pt);
+			++j;
+		}
+	}
+	else
+	{
+		while (i < pts0.size())
+		{
+			ModPoint pt;
+			pt.x = (pts0[i].x + pts1[j].x) / 2, pt.y = (pts0[i].y + pts1[j].y) / 2;
+			ret.push_back(pt);
+			++i;
+		}
+	}
+	return ret;
+}
+
+
