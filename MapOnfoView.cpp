@@ -17,6 +17,7 @@
 #include "MainFrm.h"
 #include "TwMapPropertyDlg.h"
 #include "TwGeo.h"
+#include "common.h"
 #include <set>
 #include <algorithm>
 using namespace std;
@@ -43,6 +44,7 @@ BEGIN_MESSAGE_MAP(CMapOnfoView, CView)
 	ON_WM_ERASEBKGND()
 	ON_COMMAND(ID_MENU_GRID, &CMapOnfoView::OnMenuGrid)
 	ON_WM_LBUTTONDBLCLK()
+	ON_COMMAND(ID_CT_MODE, &CMapOnfoView::OnCtMode)
 END_MESSAGE_MAP()
 
 // CMapOnfoView 构造/析构
@@ -53,6 +55,7 @@ CMapOnfoView::CMapOnfoView()
 	m_visPoint = 0;
 	m_analysis = 0;
 	m_showGridLine = 0;
+	m_bPointSel = false;
 }
 
 CMapOnfoView::~CMapOnfoView()
@@ -98,12 +101,30 @@ void CMapOnfoView::OnDraw(CDC* pDC)
 	DrawGrid(&memDC);
 	DrawMouseInfo(&memDC);
 	DrawTestLine(&memDC, m_dao);
+	DrawExpressLine(&memDC);
 	DrawCross(&memDC);
 	DrawSelGrid(&memDC);
+	DrawSelPoint(&memDC);
+	DrawDelaunay(&memDC);
 	
 	pDC->BitBlt(0, 0, nWidth, nHeight, &memDC, 0, 0, SRCCOPY);
 	bmp.DeleteObject();
 	memDC.DeleteDC();
+}
+
+void CMapOnfoView::DrawSelPoint(CDC *pDC)
+{
+	if (!m_bPointSel)
+		return;
+	Point *pt_list = m_dao.m_point_list;
+	int pid = m_selPointID;
+	double x = pt_list[pid].x, y = pt_list[pid].y;
+	int ix, iy;
+	Point2Screen(x, y, ix, iy);
+	DrawSmallCross(pDC, ix, iy);
+	CString idx;
+	idx.Format(L"%d", pid);
+	pDC->TextOutW(ix + 5, iy + 5, idx);
 }
 
 void CMapOnfoView::DrawSelGrid(CDC *pDC)
@@ -170,6 +191,56 @@ void CMapOnfoView::DrawSelGrid(CDC *pDC)
 	}
 }
 
+void CMapOnfoView::DrawDelaunay(CDC *pDC)
+{
+	CPen cPen;
+	cPen.CreatePen(PS_SOLID, 2, RGB(255, 0, 255));
+	pDC->SelectObject(&cPen);
+	for (int i = 0; i < m_drawModPoint[0].size(); ++i)
+	{
+		const ModPoint &pt = m_drawModPoint[0][i];
+		int ix, iy;
+		Point2Screen(pt.x, pt.y, ix, iy);
+		if (i == 0)
+		{
+			pDC->MoveTo(ix, iy);
+		}
+		else
+		{
+			pDC->LineTo(ix, iy);
+		}
+	}
+	for (int i = 0; i < m_drawModPoint[0].size(); ++i)
+	{
+		const ModPoint &pt = m_drawModPoint[0][i];
+		int ix, iy;
+		Point2Screen(pt.x, pt.y, ix, iy);
+		DrawSmallCross(pDC, ix, iy);
+	}
+	for (int i = 0; i < m_drawModPoint[1].size(); ++i)
+	{
+		const ModPoint &pt = m_drawModPoint[1][i];
+		int ix, iy;
+		Point2Screen(pt.x, pt.y, ix, iy);
+		if (i == 0)
+		{
+			pDC->MoveTo(ix, iy);
+		}
+		else
+		{
+			pDC->LineTo(ix, iy);
+		}
+	}
+	for (int i = 0; i < m_drawModPoint[1].size(); ++i)
+	{
+		const ModPoint &pt = m_drawModPoint[1][i];
+		int ix, iy;
+		Point2Screen(pt.x, pt.y, ix, iy);
+		DrawSmallCross(pDC, ix, iy);
+	}
+	DeleteObject(cPen);
+}
+
 void CMapOnfoView::DrawModLine(CDC *pDC, ModLine *ln)
 {
 	/*if (ln->org_lid != 2349)
@@ -194,7 +265,7 @@ void CMapOnfoView::DrawModLine(CDC *pDC, ModLine *ln)
 void CMapOnfoView::DrawGeneLines(CDC *pDC)
 {
 	CPen cPen;
-	cPen.CreatePen(PS_DASHDOT, 2, RGB(255, 0, 0));
+	cPen.CreatePen(PS_DASHDOT, 2, RGB(255, 0, 255));
 	pDC->SelectObject(&cPen);
 	for (int i = 0; i < int(m_GeneLines.size()); ++i)
 	{
@@ -341,7 +412,6 @@ void CMapOnfoView::ChangeOneway()
 	Invalidate();
 }
 
-
 void CMapOnfoView::DrawGenePoints(CDC *pDC)
 {
 	for (int i = 0; i < m_GenePoints.size(); ++i)
@@ -411,7 +481,7 @@ void CMapOnfoView::DrawLine(CDC *pDC, Line *line, bool selPoint, bool selLine)
 		Point2Screen(x, y, ix1, iy1);
 		CString idx;
 		idx.Format(L"%d", line->lid);
-		pDC->TextOutW((ix0 + ix1) / 2, (iy0 + iy1) / 2, idx);
+		pDC->TextOutW(ix0 + 20, iy0 + 20, idx);
 	}
 }
 
@@ -443,6 +513,8 @@ void CMapOnfoView::DrawLineCross(CDC *pDC, Line *line)
 
 int CMapOnfoView::GetRoadTypeCode(char* type)
 {
+	if (type == NULL)
+		return -1;
 	char* def[10] = { "主干路", "次要支路", "高速公路", "匝道", "步行街", "主要支路", "次干路", "二级公路", "一级公路", "快速路" };
 	for (int i = 0; i < 10; ++i)
 	{
@@ -991,6 +1063,33 @@ void CMapOnfoView::GeneDoubleWayGrid()
 	Invalidate();
 }
 
+void CMapOnfoView::DrawExpressLine(CDC *pDC)
+{
+	CPen cPen0, cPen1;
+	cPen0.CreatePen(PS_SOLID, 2, RGB(46, 139, 87));			// seagreen
+	cPen1.CreatePen(PS_SOLID, 2, RGB(218, 165, 32));		// goldenrod
+
+	set<int>::iterator it;
+	pDC->SelectObject(&cPen0);
+	for (it = m_ExpressLine0.begin(); it != m_ExpressLine0.end(); ++it)
+	{
+		int lid = *it;
+		Line *res = m_dao.GetData();
+		DrawLine(pDC, &res[lid], true, true);
+	}
+
+	pDC->SelectObject(&cPen1);
+	for (it = m_ExpressLine1.begin(); it != m_ExpressLine1.end(); ++it)
+	{
+		int lid = *it;
+		Line *res = m_dao.GetData();
+		DrawLine(pDC, &res[lid], true, true);
+	}
+
+	DeleteObject(cPen0);
+	DeleteObject(cPen1);
+}
+
 void CMapOnfoView::DrawTestLine(CDC *pDC, TwMapDAO &dao)
 {
 	CPen cPen, cSelPen, cMulPen, cSelPen2;
@@ -1010,7 +1109,7 @@ void CMapOnfoView::DrawTestLine(CDC *pDC, TwMapDAO &dao)
 	}
 	
 	pDC->SelectObject(&cSelPen);
-	if (sel != -1)
+	if (sel != -1 && (m_mapMode == MAP_SEL_MODE || m_mapMode == MAP_EDIT_MODE))
 	{
 		DrawLine(pDC, &res[sel], true, true);
 	}
@@ -1087,6 +1186,8 @@ void CMapOnfoView::OnInitialUpdate()
 	m_showGridLine = 0;
 	m_gridLinePoint = 0;
 	m_selGrid = NULL;
+	m_bCenterMode = 0;
+	
 
 	CMainFrame *pMain = (CMainFrame*)AfxGetMainWnd();
 	pMain->m_pane.GetPropertyDlg()->m_pView = this;
@@ -1124,12 +1225,35 @@ void CMapOnfoView::OnLButtonUp(UINT nFlags, CPoint point)
 		pDlg->UpdateRoadData(m_dao.GetSelLine());
 		//m_analysis = false;
 	}
-	else if (m_mouseState == MOUSE_DOWN)
+	else if (!m_bPointSel && m_mouseState == MOUSE_DOWN)
 	{
 		int ix = point.x - m_last_point.x, iy = point.y - m_last_point.y;
 		MoveScreen(ix, iy);
-		m_mouseState = MOUSE_UP;
 	}
+	// 选中点 Edit Mode
+	if (m_mapMode == MAP_EDIT_MODE && m_last_point.x == point.x && m_last_point.y == point.y)
+	{
+		Point factPoint;
+		Screen2Point(point.x, point.y, factPoint.x, factPoint.y);
+		m_selPointID = m_dao.FindNearestPoint(factPoint);
+		m_bPointSel = false;
+		if (m_selPointID == -1)
+			return;
+		m_bPointSel = true;
+		Invalidate();
+	}
+	else if (m_bPointSel && m_mouseState == MOUSE_DOWN)
+	{
+		Point factPoint;
+		Screen2Point(point.x, point.y, factPoint.x, factPoint.y);
+		int near_id = m_dao.FindNearestPoint(factPoint);
+		if (near_id != -1)
+		{
+			m_dao.MovePoint(m_selPointID, near_id);
+		}
+		Invalidate();
+	}
+	m_mouseState = MOUSE_UP;
 	CView::OnLButtonUp(nFlags, point);
 }
 
@@ -1189,8 +1313,12 @@ BOOL CMapOnfoView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 
 void CMapOnfoView::OnSelMode()
 {
-	// TODO:  在此添加命令处理程序代码        
-	m_mapMode = 1 - m_mapMode;
+	// TODO:  在此添加命令处理程序代码  
+	if (m_mapMode == MAP_SEL_MODE)
+		m_mapMode = 0;
+	else
+		m_mapMode = MAP_SEL_MODE;
+	//m_mapMode = 1 - m_mapMode;
 	CMainFrame *pMain = (CMainFrame*)AfxGetMainWnd();
 	CString modes[] = { L"View Mode", L"Sel Mode" };
 	pMain->SetMode(modes[m_mapMode]);
@@ -1206,10 +1334,202 @@ void CMapOnfoView::AnalysisSelLine()
 }
 
 
+void CMapOnfoView::ShowExpress()
+{
+	int sel = m_dao.GetRoadSelection();
+	if (sel == -1)
+		return;
+	m_ExpressLine0.clear();
+	Line *ln_list = m_dao.m_line_list;
+	for (int i = 0; i < m_dao.m_line_cnt; ++i)
+	{
+		if (ln_list[i].ort == ORT_ONEWAY && strcmp(ln_list[i].rank, "快速路") == 0 && 
+			strcmp(ln_list[sel].name, ln_list[i].name) == 0)
+		{
+			m_ExpressLine0.insert(i);
+		}
+	}
+	Invalidate();
+}
+
+ModLine CMapOnfoView::GeneCenterExpress(const vector<vector<int>> &exp_list)
+// exp_list 存放 lid
+// 两个vector 放对向的两条道路，按顺序存放lid
+{
+	Point *pt_list = m_dao.m_point_list;
+	Line* ln_list = m_dao.m_line_list;
+
+	// 生成两条ModPoint为顺序的道路
+	vector<ModPoint> mp0;
+	for (int i = 0; i < exp_list[0].size(); ++i)
+	{
+		int lid = exp_list[0][i];
+		if (i == 0)
+		{
+			for (int j = 0; j < ln_list[lid].point_list.size(); ++j)
+			{
+				int pid = ln_list[lid].point_list[j];
+				ModPoint pt;
+				pt.x = pt_list[pid].x, pt.y = pt_list[pid].y;
+				mp0.push_back(pt);
+			}
+		}
+		else
+		{
+			for (int j = 1; j < ln_list[lid].point_list.size(); ++j)
+			{
+				int pid = ln_list[lid].point_list[j];
+				ModPoint pt;
+				pt.x = pt_list[pid].x, pt.y = pt_list[pid].y;
+				mp0.push_back(pt);
+			}
+		}
+	}
+	vector<ModPoint> mp1;
+	for (int i = 0; i < exp_list[1].size(); ++i)
+	{
+		int lid = exp_list[1][i];
+		if (i == 0)
+		{
+			for (int j = 0; j < ln_list[lid].point_list.size(); ++j)
+			{
+				int pid = ln_list[lid].point_list[j];
+				ModPoint pt;
+				pt.x = pt_list[pid].x, pt.y = pt_list[pid].y;
+				mp1.push_back(pt);
+			}
+		}
+		else
+		{
+			for (int j = 1; j < ln_list[lid].point_list.size(); ++j)
+			{
+				int pid = ln_list[lid].point_list[j];
+				ModPoint pt;
+				pt.x = pt_list[pid].x, pt.y = pt_list[pid].y;
+				mp1.push_back(pt);
+			}
+		}
+	}
+	// 两条道路同序
+	reverse(mp1.begin(), mp1.end());
+	// 插值
+	vector<ModPoint> new_mp0 = InsertPoints(mp0);
+	vector<ModPoint> new_mp1 = InsertPoints(mp1);
+	
+	vector<ModPoint> center_list = GetCenterPoints(new_mp0, new_mp1);
+	m_drawModPoint[0] = new_mp0;
+	m_drawModPoint[1] = new_mp1;
+	ModLine retLine;
+	for (int i = 0; i < center_list.size(); ++i)
+	{
+		center_list[i].pid = int(m_GenePoints.size());
+		m_GenePoints.push_back(center_list[i]);
+		retLine.point_list.push_back(center_list[i].pid);
+	}
+	m_GeneLines.push_back(retLine);
+	return retLine;
+}
+
+void CMapOnfoView::AnalysisExpress()
+{
+	m_ExpressLine0.clear();
+	m_GeneLines.clear();
+	m_GenePoints.clear();
+
+	Line *ln_list = m_dao.m_line_list;
+	/*int sel = m_dao.GetRoadSelection();
+	if (sel == -1)
+		return;*/
+	// 先打表确定各个道路的起始lid
+	map<unsigned int, pair<int, int>> express_hash;
+	map<unsigned int, int> exp_index;
+	express_hash[0] = pair<int, int>(5141, 132);
+	express_hash[1] = pair<int, int>(258, 5044);
+	express_hash[2] = pair<int, int>(1599, 1565);
+	express_hash[3] = pair<int, int>(6065, 4381);
+	express_hash[4] = pair<int, int>(5602, 462);
+	express_hash[5] = pair<int, int>(4562, 794);
+	express_hash[6] = pair<int, int>(6582, 1354);
+	express_hash[7] = pair<int, int>(5280, 424);
+	express_hash[8] = pair<int, int>(94, 5110);
+	exp_index[ELFhash("中河高架路")] = 0;
+	exp_index[ELFhash("钱江四桥（复兴大桥）")] = 1;
+	exp_index[ELFhash("时代大道高架")] = 2;
+	exp_index[ELFhash("钱江三桥（西兴大桥）")] = 3;
+	exp_index[ELFhash("德胜高架路")] = 4;
+	exp_index[ELFhash("石祥高架路")] = 5;
+	exp_index[ELFhash("上塘高架路")] = 6;
+	exp_index[ELFhash("石桥高架路")] = 7;
+	exp_index[ELFhash("石大快速路")] = 8;
+	int cnt = 9;
+	set<int> temp;
+	map<int, int> temp_hash;
+	vector<set<int>> express_set_list;
+	vector<map<int, int>> link_list;
+	express_set_list.resize(cnt, temp);
+	link_list.resize(cnt, temp_hash);
+	for (int i = 0; i < m_dao.m_line_cnt; ++i)
+	{
+		if (ln_list[i].ort == ORT_ONEWAY && strcmp(ln_list[i].rank, "快速路") == 0)
+		{
+			char *name = ln_list[i].name;
+			int idx = exp_index[ELFhash(name)];			// 0 - 8
+			express_set_list[idx].insert(i);
+			int p0 = ln_list[i].point_list[0];
+			link_list[idx][p0] = i;
+		}
+	}
+	vector<vector<vector<int>>> info_list;
+	for (int i = 0; i < cnt; ++i)
+	{
+		const set<int> &eset = express_set_list[i];
+		set<int> stop;
+		stop.insert(express_hash[i].first);
+		stop.insert(express_hash[i].second);
+		map<int, int> &link_map = link_list[i];
+		set<int>::iterator it;
+		int lid = express_hash[i].first;
+		vector<vector<int>> temp;
+		vector<int> lid_list0;
+		while (true)
+		{
+			lid_list0.push_back(lid);
+			int pid = ln_list[lid].point_list[ln_list[lid].point_list.size() - 1];
+			if (link_map.find(pid) == link_map.end())
+				break;
+			lid = link_map[pid];
+			if (stop.find(lid) != stop.end())
+				break;
+		}
+		temp.push_back(lid_list0);
+		vector<int> lid_list1;
+		lid = express_hash[i].second;
+		while (true)
+		{
+			lid_list1.push_back(lid);
+			int pid = ln_list[lid].point_list[ln_list[lid].point_list.size() - 1];
+			if (link_map.find(pid) == link_map.end())
+				break;
+			lid = link_map[pid];
+			if (stop.find(lid) != stop.end())
+				break;
+		}
+		temp.push_back(lid_list1);
+		info_list.push_back(temp);
+	}
+	for (int i = 0; i < cnt; ++i)
+	{
+		if (i == 8)
+			GeneCenterExpress(info_list[i]);
+	}
+	Invalidate();
+}
+
+
 void CMapOnfoView::Analysis()
 {
 	//GeneDoubleWay();
-	GeneExpressPass();
+	ShowExpress();
 }
 
 
@@ -1272,4 +1592,25 @@ void CMapOnfoView::OnLButtonDblClk(UINT nFlags, CPoint point)
 	m_selGrid = &m_dao.m_grid[ir][ic];
 	Invalidate();
 	CView::OnLButtonDblClk(nFlags, point);
+}
+
+
+void CMapOnfoView::OnCtMode()
+{
+	// TODO:  在此添加命令处理程序代码
+	// 编辑模式
+	if (m_mapMode == MAP_SEL_MODE)
+		m_mapMode = MAP_EDIT_MODE;
+	else if (m_mapMode == MAP_EDIT_MODE)
+		m_mapMode = 0;
+		
+	if (m_mapMode != MAP_EDIT_MODE)
+		m_bPointSel = false;
+	Invalidate();
+
+	CMainFrame *pMain = (CMainFrame*)AfxGetMainWnd();
+	if (m_mapMode == MAP_EDIT_MODE)
+		pMain->SetMode(L"Edit Mode");
+	else
+		pMain->SetMode(L"View Mode");
 }

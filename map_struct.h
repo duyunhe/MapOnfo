@@ -22,8 +22,9 @@ struct Point
 	double y;
 	int pid;
 	bool cross;
+	string uid;
 	// PBiList line_list;
-	vector<pair<int, int>> line_list;		// line id, seq of segment
+	vector<pair<int, int>> line_list;		// 相连的线段line id, 和segment在整条道路中的seq 易得双向边有两条相连的线段
 	bool operator <(const struct Point&s) const;
 	Point(double x, double y);
 	Point();
@@ -105,4 +106,5 @@ struct Road
 struct Grid
 {
 	std::vector<int> line_list;		// lid
+	std::vector<int> point_list;	// pid
 };

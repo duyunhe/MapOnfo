@@ -51,18 +51,24 @@
 #define IDC_CHECK12                     1017
 #define IDC_CHECK13                     1018
 #define IDC_BUTTON_LID                  1019
+#define IDC_BUTTON_SELMODE              1020
+#define IDC_BUTTON_EDIT                 1021
+#define IDC_BUTTON_EXP                  1028
 #define IDC_MODE                        32771
 #define ID_SEL_MODE                     32772
 #define ID_32773                        32773
 #define ID_MENU_GRID                    32774
+#define ID_32775                        32775
+#define ID_CENTER                       32776
+#define ID_CT_MODE                      32777
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        311
-#define _APS_NEXT_COMMAND_VALUE         32775
-#define _APS_NEXT_CONTROL_VALUE         1020
+#define _APS_NEXT_COMMAND_VALUE         32778
+#define _APS_NEXT_CONTROL_VALUE         1028
 #define _APS_NEXT_SYMED_VALUE           310
 #endif
 #endif

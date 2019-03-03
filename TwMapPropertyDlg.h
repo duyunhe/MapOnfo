@@ -59,4 +59,22 @@ public:
 	BOOL m_chkAll;
 	afx_msg void OnBnClickedCheck13();
 	afx_msg void OnBnClickedButtonLid();
+	afx_msg void OnBnClickedButtonSelmode();
+	CString m_line0;
+	CString m_line1;
+	afx_msg void OnBnClickedButtonOk0();
+	afx_msg void OnBnClickedButtonCancel0();
+	afx_msg void OnBnClickedButtonOk1();
+	afx_msg void OnBnClickedButtonCancel1();
+	afx_msg void OnBnClickedButtonCenter();
+
+	void EnableCenterButtons(BOOL);
+	CButton m_btnOK0;
+	CButton m_btnOK1;
+	CButton m_btnCancel0;
+	// ¸÷¸ö°´Å¥
+	CButton m_btnCancel1;
+	CButton m_btnCenter;
+	afx_msg void OnBnClickedButtonExp();
+	afx_msg void OnBnClickedButtonEdit();
 };

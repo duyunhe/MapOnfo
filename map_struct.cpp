@@ -14,14 +14,7 @@ Line::Line()
 
 bool Point::operator <(const struct Point&s) const
 {
-	if (x < s.x)
-		return true;
-	else if (Equal(x, s.x))
-	{
-		if (y < s.y)
-			return true;
-	}
-	return false;
+	return uid < s.uid;
 }
 
 Point::Point(double x, double y)

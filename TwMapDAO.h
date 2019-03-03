@@ -68,7 +68,10 @@ public:
 	void SetCenter(double x, double y);
 	Line *GetData();
 	int FindNearestSegment(Point pt);
-	// FindNearestSegment 找到最近的一条Line  return lid
+	int FindNearestPoint(Point pt);
+	
+	void MovePoint(int pid0, int pid1);
+	// 将pid0的点移动到pid1
 	Line* GetSelLine();
 	Road* GetSelRoad(char* name);
 	void DivideGrid();

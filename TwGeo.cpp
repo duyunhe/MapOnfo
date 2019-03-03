@@ -67,6 +67,21 @@ int Line2Line(LinePtr l0, LinePtr l1, double &dist, Point *pt_list)			// like Ha
 	return 0;
 }
 
+double PointProjectSegment(Point pt, Point p0, Point p1)
+{
+	double x = pt.x, y = pt.y;
+	double x0 = p0.x, y0 = p0.y;
+	double x1 = p1.x, y1 = p1.y;
+	double d2 = (x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0);
+	if (Zero(d2))
+	{
+		return 0;
+	}
+	double cr = (x1 - x0) * (x - x0) + (y1 - y0) * (y - y0);
+	double px = x0 + (x1 - x0) / d2 * cr, py = y0 + (y1 - y0) / d2 * cr;
+	return sqrt((x - px) * (x - px) + (y - py) * (y - py));
+}
+
 double Point2Segment(Point pt, Point p0, Point p1, int &state)
 {
 	double x = pt.x, y = pt.y;
@@ -105,6 +120,11 @@ bool CrossProduct(Point pt, Point p0, Point p1)
 
 
 double GetDist(Point px, Point py)
+{
+	return sqrt((px.x - py.x) * (px.x - py.x) + (px.y - py.y) * (px.y - py.y));
+}
+
+double GetDist(ModPoint px, ModPoint py)
 {
 	return sqrt((px.x - py.x) * (px.x - py.x) + (px.y - py.y) * (px.y - py.y));
 }
@@ -234,10 +254,25 @@ double ProjectDist(LinePtr src, LinePtr target, Point *pt_list)
 	src : 待投影的道路，需要计算该路应投影至哪条道路
 	target : 候选道路
 	*/
-	
+	for (int i = 0; i < target->point_list.size() - 1; ++i)
+	{
+		int pid0 = target->point_list[i], pid1 = target->point_list[i + 1];
+		Point p0 = pt_list[pid0], p1 = pt_list[pid1];
+		// 找到最大值
+		double max_dist = 0;
+		for (int j = 0; j < src->point_list.size(); ++j)
+		{
+			int pid = src->point_list[j];
+			Point pt = pt_list[pid];
+			double project_dist = PointProjectSegment(pt, p0, p1);
+			max_dist = max(max_dist, project_dist);
+		}
+	}
+	return 0;
 }
 
-vector<ModPoint> GetCenterPoints(const vector<Point> &pts0, const vector<Point> &pts1)
+
+vector<ModPoint> GetCenterPoints(const vector<ModPoint> &pts0, const vector<ModPoint> &pts1)
 {
 	vector<ModPoint> ret;
 	int i = 0, j = 0;			// two pointer
@@ -281,6 +316,47 @@ vector<ModPoint> GetCenterPoints(const vector<Point> &pts0, const vector<Point> 
 			++i;
 		}
 	}
+	return ret;
+}
+
+
+void GetPointOffsetOnSegment(Segment sgmt, double offset, ModPoint &dstPt)
+{
+	double x0 = sgmt.begin_pt.x, y0 = sgmt.begin_pt.y;
+	double x1 = sgmt.end_pt.x, y1 = sgmt.end_pt.y;
+	double dx = x1 - x0, dy = y1 - y0;
+	double len = sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
+	double x = x0 + offset / len * dx, y = y0 + offset / len * dy;
+	dstPt.x = x, dstPt.y = y;
+}
+
+
+vector<ModPoint> InsertPoints(const vector<ModPoint> &pts)
+{
+	vector<ModPoint> ret;
+	for (int i = 0; i < pts.size() - 1; ++i)
+	{
+		const double OFF = 50;
+		ModPoint p0, p1;
+		p0 = pts[i], p1 = pts[i + 1];
+		double dist = GetDist(p0, p1);
+		double offset = OFF;
+		ret.push_back(pts[i]);
+		if (dist > OFF)
+		{
+			while (offset < dist)
+			{
+				Segment sg;
+				sg.begin_pt.x = p0.x, sg.begin_pt.y = p0.y;
+				sg.end_pt.x = p1.x, sg.end_pt.y = p1.y;
+				ModPoint pt;
+				GetPointOffsetOnSegment(sg, offset, pt);
+				ret.push_back(pt);
+				offset += OFF;
+			}
+		}
+	}
+	ret.push_back(pts[pts.size() - 1]);
 	return ret;
 }
 

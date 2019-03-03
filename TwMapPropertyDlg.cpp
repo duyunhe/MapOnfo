@@ -29,6 +29,8 @@ TwMapPropertyDlg::TwMapPropertyDlg(CWnd* pParent /*=NULL*/)
 	, m_chkOneway(FALSE)
 	, m_chkDoubleWay(FALSE)
 	, m_chkAll(FALSE)
+	, m_line0(_T(""))
+	, m_line1(_T(""))
 {
 
 }
@@ -93,6 +95,7 @@ void TwMapPropertyDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK11, m_chkOneway);
 	DDX_Check(pDX, IDC_CHECK12, m_chkDoubleWay);
 	DDX_Check(pDX, IDC_CHECK13, m_chkAll);
+
 }
 
 
@@ -113,6 +116,9 @@ BEGIN_MESSAGE_MAP(TwMapPropertyDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_CHECK12, &TwMapPropertyDlg::OnBnClickedCheck12)
 	ON_BN_CLICKED(IDC_CHECK13, &TwMapPropertyDlg::OnBnClickedCheck13)
 	ON_BN_CLICKED(IDC_BUTTON_LID, &TwMapPropertyDlg::OnBnClickedButtonLid)
+	ON_BN_CLICKED(IDC_BUTTON_SELMODE, &TwMapPropertyDlg::OnBnClickedButtonSelmode)
+	ON_BN_CLICKED(IDC_BUTTON_EXP, &TwMapPropertyDlg::OnBnClickedButtonExp)
+	ON_BN_CLICKED(IDC_BUTTON_EDIT, &TwMapPropertyDlg::OnBnClickedButtonEdit)
 END_MESSAGE_MAP()
 
 
@@ -139,6 +145,8 @@ BOOL TwMapPropertyDlg::OnInitDialog()
 	m_chkDoubleWay = TRUE;
 	m_chkAll = TRUE;
 	UpdateData(FALSE);
+
+	EnableCenterButtons(FALSE);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// 异常:  OCX 属性页应返回 FALSE
@@ -308,4 +316,41 @@ void TwMapPropertyDlg::OnBnClickedButtonLid()
 {
 	// TODO:  在此添加控件通知处理程序代码
 	((CMapOnfoView*)m_pView)->ChangeGridLinePoint();
+}
+
+
+void TwMapPropertyDlg::OnBnClickedButtonSelmode()
+{
+	// TODO:  在此添加控件通知处理程序代码
+	((CMapOnfoView*)m_pView)->OnSelMode();
+}
+
+
+void TwMapPropertyDlg::OnBnClickedButtonCenter()
+{
+	// TODO:  在此添加控件通知处理程序代码
+}
+
+
+void TwMapPropertyDlg::EnableCenterButtons(BOOL enable)
+{
+	/*m_btnCancel0.EnableWindow(enable);
+	m_btnCancel1.EnableWindow(enable);
+	m_btnOK0.EnableWindow(enable);
+	m_btnOK1.EnableWindow(enable);
+	m_btnCenter.EnableWindow(enable);*/
+}
+
+
+void TwMapPropertyDlg::OnBnClickedButtonExp()
+{
+	// TODO:  在此添加控件通知处理程序代码
+	((CMapOnfoView*)m_pView)->AnalysisExpress();
+}
+
+
+void TwMapPropertyDlg::OnBnClickedButtonEdit()
+{
+	// TODO:  在此添加控件通知处理程序代码
+	((CMapOnfoView*)m_pView)->OnCtMode();
 }

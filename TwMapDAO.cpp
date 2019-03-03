@@ -4,6 +4,7 @@
 #include "TwGeo.h"
 #include <ctime>
 #include <set>
+#include <string>
 #include "common.h"
 using namespace std;
 
@@ -362,6 +363,47 @@ void TwMapDAO::SetRoadSelection(int sel)
 	m_sel = sel;
 }
 
+void TwMapDAO::MovePoint(int pid0, int pid1)
+{
+	double x = m_point_list[pid0].x, y = m_point_list[pid0].y;
+	int r, c;
+	GetRowCol(x, y, r, c);
+	set<int> lid_set;
+	for (int i = 0; i < m_grid[r][c].line_list.size(); ++i)
+	{
+		int lid = m_grid[r][c].line_list[i];
+		for (int j = 0; j < m_line_list[lid].point_list.size(); ++j)
+		{
+			if (m_line_list[lid].point_list[j] == pid0)
+				m_line_list[lid].point_list[j] = pid1;
+		}
+	}
+}
+
+int TwMapDAO::FindNearestPoint(Point pt)
+{
+	double min_dist = 1e20;
+	double x = pt.x, y = pt.y;
+	int ir, ic;
+	GetRowCol(x, y, ir, ic);
+	int sel_pid = -1;
+	for (int i = 0; i < m_grid[ir][ic].point_list.size(); ++i)
+	{
+		Point p0 = m_point_list[m_grid[ir][ic].point_list[i]];
+		double dist = GetDist(p0, pt);
+		if (dist < min_dist)
+		{
+			min_dist = dist;
+			sel_pid = m_grid[ir][ic].point_list[i];
+		}
+	}
+	if (min_dist > 10)
+	{
+		sel_pid = -1;
+	}
+	return sel_pid;
+}
+
 
 int TwMapDAO::FindNearestSegment(Point pt)
 {
@@ -383,7 +425,7 @@ int TwMapDAO::FindNearestSegment(Point pt)
 			}
 		}
 	}
-	if (min_dist > 5)
+	if (min_dist > 10)
 	{
 		m_sel = -1;
 	}
@@ -485,10 +527,13 @@ void TwMapDAO::ReadData()
 			int seq = sqlite3_column_int(stmt, 2);
 			double longi = sqlite3_column_double(stmt, 3);
 			double lati = sqlite3_column_double(stmt, 4);
+			string sLongi = double2String(longi);
+			string sLati = double2String(lati);
 			blh.b = lati, blh.l = longi, blh.h = 0;
 			WGS84_BLH_2_HZ_xyH(blh, &xyh);
 			// point id
 			Point pt(xyh.y, xyh.x);
+			pt.uid = sLongi + ";" + sLati;
 			int pid = InsertPointID(pt);
 			if (m_line_list[sid].point_list.size() == 0)			// new line
 			{
@@ -588,10 +633,6 @@ void TwMapDAO::DivideGrid()
 	for (int i = 0; i < m_line_cnt; ++i)
 	{
 		std::set<std::pair<int, int>> grid;
-		if (m_line_list[i].ort == ORT_ONEWAY || strcmp(m_line_list[i].rank, "步行街") == 0 ||
-			strcmp(m_line_list[i].rank, "匝道") == 0 || strcmp(m_line_list[i].rank, "连杆道路") == 0 ||
-			strcmp(m_line_list[i].rank, "次要支路") == 0)
-			continue;
 		for (int j = 0; j < m_line_list[i].point_list.size(); ++j)
 		{
 			int ir, ic;
@@ -606,7 +647,19 @@ void TwMapDAO::DivideGrid()
 			int ir = it->first, ic = it->second;
 			m_grid[ir][ic].line_list.push_back(m_line_list[i].lid);
 		}
+		if (m_line_list[i].ort == ORT_ONEWAY || strcmp(m_line_list[i].rank, "步行街") == 0 ||
+			strcmp(m_line_list[i].rank, "匝道") == 0 || strcmp(m_line_list[i].rank, "连杆道路") == 0 ||
+			strcmp(m_line_list[i].rank, "次要支路") == 0)
+			continue;
 		m_gene_list.push_back(m_line_list[i].lid);
+	}
+
+	for (int i = 0; i < m_point_cnt; ++i)
+	{
+		double x = m_point_list[i].x, y = m_point_list[i].y;
+		int ir, ic;
+		GetRowCol(x, y, ir, ic);
+		m_grid[ir][ic].point_list.push_back(m_point_list[i].pid);
 	}
 }
 

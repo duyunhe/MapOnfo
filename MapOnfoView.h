@@ -10,6 +10,9 @@
 #include <set>
 using namespace std;
 
+#define MAP_SEL_MODE  1
+#define MAP_EDIT_MODE 2
+
 class CMapOnfoView : public CView
 {
 	TwMapDAO m_dao;
@@ -24,13 +27,18 @@ class CMapOnfoView : public CView
 	Point m_lastFactPoint;		// 记录鼠标按下时选取的实际点
 	CPoint m_mousePoint;
 	Point m_factPoint;
-	int m_mapMode;				// 0 view mode, 1 sel mode
+	int m_mapMode;				// 0 view mode, 1 sel mode, 2 edit mode
+	bool m_bCenterMode;
+	bool m_bPointSel;			// 点已经被选中，此时高亮十字
+	int m_CenterStep;
 	bool m_visPoint;			// 0 print point, 1 not 
 	bool m_analysis;			// 0 no analysis, 1 yes
 	bool m_showGridLine;
 	bool m_gridLinePoint;		// 0 no point, line id ...  1 yes
 	int m_selLineID;
+	int m_selPointID;			// edit mode下选中点
 	vector<Segment> m_geneSegment;
+	vector<ModPoint> m_drawModPoint[2];
 
 	BOOL m_showType[10];		// 
 	BOOL m_showOneWay;
@@ -38,6 +46,9 @@ class CMapOnfoView : public CView
 
 	vector<ModPoint> m_GenePoints;
 	vector<ModLine> m_GeneLines;
+
+	set<int> m_ExpressLine0;
+	set<int> m_ExpressLine1;
 
 protected: // 仅从序列化创建
 	CMapOnfoView();
@@ -54,10 +65,13 @@ protected: // 仅从序列化创建
 	void DrawModLine(CDC *pDC, ModLine *ln);
 	void DrawGeneLines(CDC *pDC);
 	void DrawTestLine(CDC* pDC, TwMapDAO &dao);
+	void DrawDelaunay(CDC* pDC);
+	void DrawExpressLine(CDC *pDC);
 	void DrawCross(CDC* pDC);
 	void DrawGrid(CDC *pDC);
 	void DrawSegment(Line &sgmt);
 	void DrawSelGrid(CDC *pDC);
+	void DrawSelPoint(CDC *pDC);
 	void MoveScreen(int offsetX, int offsetY);
 	void Point2Screen(double srcX, double srcY, int &pixelX, int &pixelY);
 	void Screen2Point(int pixelX, int pixelY, double &sx, double &sy);
@@ -68,6 +82,9 @@ protected: // 仅从序列化创建
 	void DrawLineCross(CDC *pDC, Line *line);
 	void AnalysisSelLine();
 	void Analysis();
+	void AnalysisExpress();
+	ModLine GeneCenterExpress(const vector<vector<int>> &exp_list);
+	void ShowExpress();
 	void ChangeOneway();
 	void ChangeDoubleWay();
 	void GeneDoubleWayGrid();			// 双向路生成两条对向边	Grid Test 
@@ -118,6 +135,7 @@ public:
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	afx_msg void OnMenuGrid();
 	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
+	afx_msg void OnCtMode();
 };
 
 #ifndef _DEBUG  // MapOnfoView.cpp 中的调试版本
