@@ -95,6 +95,8 @@ protected: // 仅从序列化创建
 	void GeneExpressPoint(Point* pt, Segment* sgmt, ModPoint &mp);
 	// 转角生成点
 	void ChangeGridLinePoint();
+	vector<ModPoint> DogLast(const vector<ModPoint> &src);
+	vector<int> _DogLast(const vector<ModPoint> &src, int bid, int eid);
 
 // 特性
 public:

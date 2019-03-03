@@ -105,7 +105,7 @@ void CMapOnfoView::OnDraw(CDC* pDC)
 	DrawCross(&memDC);
 	DrawSelGrid(&memDC);
 	DrawSelPoint(&memDC);
-	DrawDelaunay(&memDC);
+	//DrawDelaunay(&memDC);
 	
 	pDC->BitBlt(0, 0, nWidth, nHeight, &memDC, 0, 0, SRCCOPY);
 	bmp.DeleteObject();
@@ -259,6 +259,9 @@ void CMapOnfoView::DrawModLine(CDC *pDC, ModLine *ln)
 		{
 			pDC->LineTo(ix, iy);
 		}
+		CString idx;
+		idx.Format(L"%d", i);
+		pDC->TextOutW(ix, iy, idx);
 	}
 }
 
@@ -1417,18 +1420,82 @@ ModLine CMapOnfoView::GeneCenterExpress(const vector<vector<int>> &exp_list)
 	vector<ModPoint> new_mp1 = InsertPoints(mp1);
 	
 	vector<ModPoint> center_list = GetCenterPoints(new_mp0, new_mp1);
+	vector<ModPoint> mod_list = DogLast(center_list);
 	m_drawModPoint[0] = new_mp0;
 	m_drawModPoint[1] = new_mp1;
 	ModLine retLine;
-	for (int i = 0; i < center_list.size(); ++i)
+	for (int i = 0; i < mod_list.size(); ++i)
 	{
-		center_list[i].pid = int(m_GenePoints.size());
-		m_GenePoints.push_back(center_list[i]);
-		retLine.point_list.push_back(center_list[i].pid);
+		mod_list[i].pid = int(m_GenePoints.size());
+		m_GenePoints.push_back(mod_list[i]);
+		retLine.point_list.push_back(mod_list[i].pid);
 	}
 	m_GeneLines.push_back(retLine);
 	return retLine;
 }
+
+vector<int> CMapOnfoView::_DogLast(const vector<ModPoint> &src, int bid, int eid)
+{
+	if (eid - bid <= 1)
+	{
+		vector<int> r;
+		r.push_back(bid);
+		r.push_back(eid);
+		return r;
+	}
+	Point p0, p1;
+	double max_dist = -1e10;
+	int sel = -1;
+	p0.x = src[bid].x, p0.y = src[bid].y;
+	p1.x = src[eid].x, p1.y = src[eid].y;
+	for (int i = bid + 1; i < eid; ++i)
+	{
+		Point pt;
+		int s;
+		pt.x = src[i].x, pt.y = src[i].y;
+		double dist = Point2Segment(pt, p0, p1, s);
+		if (dist > max_dist)
+		{
+			max_dist = dist;
+			sel = i;
+		}
+	}
+
+	if (max_dist < 1)
+	{
+		vector<int> r;
+		r.push_back(bid);
+		r.push_back(eid);
+		return r;
+	}
+	else
+	{
+		vector<int> &t0 = _DogLast(src, bid, sel);
+		vector<int> &t1 = _DogLast(src, sel, eid);
+		vector<int> r;
+		for (int i = 0; i < t0.size() - 1; ++i)
+		{
+			r.push_back(t0[i]);
+		}
+		for (int i = 0; i < t1.size(); ++i)
+		{
+			r.push_back(t1[i]);
+		}
+		return r;
+	}
+}
+
+vector<ModPoint> CMapOnfoView::DogLast(const vector<ModPoint> &src)
+{
+	vector<ModPoint> ret;
+	vector<int> ret_index = _DogLast(src, 0, int(src.size()) - 1);
+	for (int i = 0; i < ret_index.size(); ++i)
+	{
+		ret.push_back(src[ret_index[i]]);
+	}
+	return ret;
+}
+
 
 void CMapOnfoView::AnalysisExpress()
 {

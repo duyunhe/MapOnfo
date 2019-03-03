@@ -336,7 +336,7 @@ vector<ModPoint> InsertPoints(const vector<ModPoint> &pts)
 	vector<ModPoint> ret;
 	for (int i = 0; i < pts.size() - 1; ++i)
 	{
-		const double OFF = 50;
+		const double OFF = 20;
 		ModPoint p0, p1;
 		p0 = pts[i], p1 = pts[i + 1];
 		double dist = GetDist(p0, p1);
